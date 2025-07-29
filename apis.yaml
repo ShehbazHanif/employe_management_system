@@ -1,0 +1,73 @@
+openapi: 3.0.0
+info:
+  title: Employee Management System APIs
+  version: 1.0.0
+  description: A comprehensive REST API for the Employee Management System
+  contact:
+    name: API Support
+    email: support@employee.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:5005
+    description: Development server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Authorization header using the Bearer scheme
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: jwt
+      description: JWT token stored in cookie
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 64abc123def456789012345
+        name:
+          type: string
+          example: Ahmed Ali
+        profileImageUrl:
+          type: string
+          example: https://example.com/profile.jpg
+        role:
+          type: string
+          enum: [user, admin]
+          example: user
+        createdAt:
+          type: string
+          format: date-time
+security:
+  - bearerAuth: []
+
+paths:
+  /api/admin/login:
+    post:
+      summary: Admin login
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: admin@example.com
+                password:
+                  type: string
+                  example: yourpassword
+      responses:
+        '200':
+          description: Successful login
+        '401':
+          description: Unauthorized
