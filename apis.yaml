@@ -303,7 +303,7 @@ paths:
 
   /user/attendance-summary:
     get:
-      summary: View daily/weekly/monthly attendance summary
+      summary: User View  attendance Summary , working Hours , Break Time and OverTime (daily ,weekly, monthly)
       tags: [Attendance]
       security:
         - bearerAuth: []

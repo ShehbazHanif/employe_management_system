@@ -27,9 +27,9 @@ router.get('/get/all-task',authToken,userController.getAllTasks);
 // route to update task status
 router.patch('/update-task/:id',taskController.updateTask);
 
-//route to get attendance Summary (daily ,weekly, monthly)
+//route to  user  get attendance Summary and working Hours , Break Time and OverTime (daily ,weekly, monthly)
 
-router.get('/attendance-summary', authToken, attendanceController.getAttendanceSummary);
+router.get('/attendance-summary', authToken, attendanceController.getAttendanceAndWorkingSummary);
 
 
 module.exports = router;

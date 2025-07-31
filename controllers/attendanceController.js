@@ -1,9 +1,10 @@
+const moment = require('moment');
 const Attendance = require('../models/attendance');
 const mongoose = require('mongoose');
-
+const monent = require("moment")
 // Check-In Controller
 const checkIn = async (req, res) => {
- try {
+  try {
     const userId = req.user.id;
 
     // Check if already checked in today
@@ -57,8 +58,8 @@ const checkIn = async (req, res) => {
 };
 
 // Check-Out Controller
-const  checkOut = async (req, res) => {
-   try {
+const checkOut = async (req, res) => {
+  try {
     const userId = req.user.id;
 
     const today = new Date();
@@ -90,85 +91,96 @@ const  checkOut = async (req, res) => {
   }
 };
 
-// user  get attendance Summary (daily ,weekly, monthly)
+// user  get attendance Summary and working Hours , Break Time and OverTime (daily ,weekly, monthly)
 
-const getAttendanceSummary = async (req, res) => {
+// Helper: Calculate working hours and overtime
+const getWorkingStats = (attendance) => {
+  const breakHours = parseFloat(process.env.BREAK_TIME || 1); // Default 1hr break
+
+  if (!attendance.checkIn || !attendance.checkOut) {
+    return { workingHour: 0, overTime: 0 };
+  }
+
+  const duration = moment(attendance.checkOut).diff(moment(attendance.checkIn), 'hours', true);
+  const workingHour = Math.max(duration - breakHours, 0);
+  const overTime = workingHour > 8 ? workingHour - 8 : 0;
+
+  return {
+    workingHour: parseFloat(workingHour.toFixed(2)),
+    overTime: parseFloat(overTime.toFixed(2)),
+    breakTime: breakHours
+  };
+};
+
+// Format a single attendance with stats
+const formatAttendance = (record) => {
+  const stats = getWorkingStats(record);
+  return {
+    checkIn: record.checkIn ? moment(record.checkIn).format("YYYY-MM-DD HH:mm:ss") : null,
+    checkOut: record.checkOut ? moment(record.checkOut).format("YYYY-MM-DD HH:mm:ss") : null,
+    location: record.location || null,
+    status: record.status || null,
+    ...stats
+  };
+};
+
+const getAttendanceAndWorkingSummary = async (req, res) => {
   try {
     const userId = req.user?.id;
+    const { range = 'all' } = req.query;
 
     if (!userId) {
       return res.status(400).json({ status: 400, message: 'User ID is required' });
     }
 
-    const now = new Date();
-    const todayStart = new Date(now.setHours(0, 0, 0, 0));
-    const todayEnd = new Date(now.setHours(23, 59, 59, 999));
+    const todayStart = moment().startOf('day').toDate();
+    const todayEnd = moment().endOf('day').toDate();
+    const weekStart = moment().subtract(6, 'days').startOf('day').toDate();
+    const monthStart = moment().startOf('month').toDate();
 
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 6); // last 7 days
-    weekStart.setHours(0, 0, 0, 0);
+    const data = {};
 
-    const monthStart = new Date();
-    monthStart.setDate(1); // first day of current month
-    monthStart.setHours(0, 0, 0, 0);
-
-    const [todayAttendance, weeklySummary, monthlySummary] = await Promise.all([
-      // Today
-      Attendance.findOne({
+    if (range === 'daily' || range === 'all') {
+      const today = await Attendance.findOne({
         user: userId,
-        checkIn: { $gte: todayStart, $lte: todayEnd },
-      }),
+        checkIn: { $gte: todayStart, $lte: todayEnd }
+      });
+      data.today = today ? formatAttendance(today) : null;
+    }
 
-      // Weekly Summary
-      Attendance.aggregate([
-        { $match: { user: new mongoose.Types.ObjectId(userId), checkIn: { $gte: weekStart } } },
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-          },
-        },
-      ]),
+    if (range === 'weekly' || range === 'all') {
+      const week = await Attendance.find({
+        user: userId,
+        checkIn: { $gte: weekStart }
+      }).sort({ checkIn: -1 });
+      data.weekly = week.map(formatAttendance);
+    }
 
-      // Monthly Summary
-      Attendance.aggregate([
-        { $match: { user: new mongoose.Types.ObjectId(userId), checkIn: { $gte: monthStart } } },
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-          },
-        },
-      ]),
-    ]);
+    if (range === 'monthly' || range === 'all') {
+      const month = await Attendance.find({
+        user: userId,
+        checkIn: { $gte: monthStart }
+      }).sort({ checkIn: -1 });
+      data.monthly = month.map(formatAttendance);
+    }
 
     res.status(200).json({
       status: 200,
-      data: {
-        today: todayAttendance || null,
-        weekly: formatSummary(weeklySummary),
-        monthly: formatSummary(monthlySummary),
-      },
-      message: 'Attendance summary fetched successfully',
+      message: `Attendance ${range !== 'all' ? range : ''} summary fetched successfully`,
+      data
     });
   } catch (err) {
-    console.error('Error:', err);
+    console.error('Error in getAttendanceAndWorkingSummary:', err);
     res.status(500).json({ status: 500, message: err.message });
   }
 };
 
-// Helper function
-function formatSummary(summaryArr) {
-  const defaultSummary = { Present: 0, Absent: 0, Leave: 0 };
-  summaryArr.forEach(item => {
-    defaultSummary[item._id] = item.count;
-  });
-  return defaultSummary;
-}
+
+
 // admin get To generate Reports
 const getAttendanceReports = async (req, res) => {
   try {
-    const { userId, status, startDate, endDate, page = 1, limit = 10 } = req.query;
+    const { userId,  startDate, endDate, page = 1, limit = 10 } = req.query;
 
     const query = {};
 
@@ -176,9 +188,9 @@ const getAttendanceReports = async (req, res) => {
       query.user = new mongoose.Types.ObjectId(userId);
     }
 
-    if (status) {
-      query.status = status;
-    }
+    // if (status) {
+    //   query.status = status;
+    // }
 
     if (startDate && endDate) {
       query.checkIn = {
@@ -302,12 +314,35 @@ const exportAttendanceCSV = async (req, res) => {
     res.status(500).json({ status: 500, message: err.message });
   }
 };
+
+
+
+
+
 const attendanceController = {
-    checkIn,
-    checkOut,
-    getAttendanceSummary,
-    getAttendanceReports,
-    exportAttendanceCSV
+  checkIn,
+  checkOut,
+  getAttendanceAndWorkingSummary,
+  getAttendanceReports,
+  exportAttendanceCSV,
+
 };
 
 module.exports = attendanceController;
+
+
+
+// for (let i = 1; i <= 30; i++) {
+
+//   const attendance = await Attendance.create({
+//     user: "688b3be0801eb80c3969fe14",
+//     checkIn: `2025-07-${i} 09:00`,
+//     checkOut: `2025-07-${i} 20:00`,
+//     status: 'Present',
+//     location: {
+//       "lat": 33.550512,
+//       "lng": 73.0801582
+//     }, // assumed set in middleware
+//   });
+
+// }
