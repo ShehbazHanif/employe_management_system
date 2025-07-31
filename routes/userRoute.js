@@ -8,6 +8,8 @@ const adminAuthLimiter = authRateLimit(15 * 60 * 1000, 10); // 3 attempts per 15
 
 // userController
 const userController = require('../controllers/userController');
+const taskController = require('../controllers/taskController');
+const attendanceController = require('../controllers/attendanceController');
 
 // route login user
 router.post('/login',adminAuthLimiter ,userController.login);
@@ -15,6 +17,19 @@ router.post('/login',adminAuthLimiter ,userController.login);
 // route to get current user profile
 
 router.get('/profile',userController.getUserProfile);
+
+// route to get latest task
+router.get('/get/latest-task',authToken,userController.getLatestTask);
+
+//route to get all tasks
+router.get('/get/all-task',authToken,userController.getAllTasks);
+
+// route to update task status
+router.patch('/update-task/:id',taskController.updateTask);
+
+//route to get attendance Summary (daily ,weekly, monthly)
+
+router.get('/attendance-summary', authToken, attendanceController.getAttendanceSummary);
 
 
 module.exports = router;

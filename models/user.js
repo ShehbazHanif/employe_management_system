@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Employee name is required'],
+    required: true, 
     trim: true,
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: true, 
     lowercase: true,
     unique: true,
   },
@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    required: [true, 'Department is required'],
+    required: true,
   },
   designation: {
     type: String,
@@ -26,8 +26,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['employee', 'manager', 'hr'],
-    default: 'employee',
+    enum: ['Employee', 'Manager', 'Hr'],
+    default: 'Employee',
   },
  location: {
      type:String,
@@ -43,8 +43,8 @@ const userSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'inactive'],
-    default: 'active',
+    enum: ['Active', 'Inactive'],
+    default: 'Active',
   },
   createdAt: {
     type: Date,

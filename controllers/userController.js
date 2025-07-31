@@ -1,4 +1,5 @@
 const User = require('../models/user');
+const Task = require('../models/task');
 const bcrypt = require('bcrypt');
 const createSendToken  = require('../utils/generateToken');
 const {catchAsync} = require('../middlewares/errorHandler')
@@ -71,16 +72,73 @@ const getUserProfile = catchAsync(async (req, res, next) => {
 });
 
 // Get All Users
-const getAllUsers = async (req, res) => {
-  const users = await User.find().select('-password');
-  res.status(200).json({ status: 'success', data: users });
+const getAlLUsers = async(req,res)=>{
+
+try {
+   const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const total = await User.countDocuments();
+    const users = await User.find().sort({createdAt:-1}).skip((page-1)*limit);
+
+    return res.status(200).json({
+      status: 200,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalTasks: total,
+      users,
+      message:"fetch users successfull"
+    });
+  
+} catch (err) {
+
+  res.status(500).json({ status: 500, message: err.message });
+}
+}
+
+// get filter user
+const getFilterUser = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+
+    const query = {
+      $or: [
+        { phone: { $regex: search, $options: 'i' } },
+         { department: { $regex: search, $options: 'i' } },
+        { designation: { $regex: search, $options: 'i' } },
+         { status: { $regex: search, $options: 'i' } },
+      ],
+    };
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate('assignedBy', 'name email')
+      .populate('assignedTo', 'name email')
+      .populate('assignedTeam', 'name');
+
+    res.status(200).json({
+      status: 200,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalTasks: total,
+      users,
+      message:"fetch users successfull"
+    });
+  } catch (err) {
+    res.status(500).json({ status: 500, message: err.message });
+  }
 };
 
 // Get Single User
 const getSingleUser = async (req, res) => {
   const user = await User.findById(req.params.id).select('-password');
   if (!user) return res.status(404).json({ message: 'User not found' });
-  res.status(200).json({ status: 'success', data: user });
+  res.status(200).json({ status: 200, data: user });
 };
 
 // Update User
@@ -95,14 +153,89 @@ const  deleteUser = async (req, res) => {
   res.status(204).send();
 };
 
+//Get Latest Task
+const getLatestTask = async (req, res) => {
+  try {
+    const assignedTo = req.user?.id;
+
+    if (!assignedTo) {
+      return res.status(400).json({
+        status: 400,
+        message: "User ID is required",
+      });
+    }
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const latestTask = await Task.findOne({
+      assignedTo,
+      createdAt: { $gte: startOfDay },
+    })
+      .populate("assignedBy", "name email")
+      .sort({ createdAt: -1 });
+
+    if (!latestTask) {
+      return res.status(404).json({
+        status: 404,
+        message: "No task found for today",
+      });
+    }
+
+    res.status(200).json({
+      status: 200,
+      data: latestTask,
+      message: "Latest task fetched successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
+// get all tasks
+const getAllTasks = async (req, res) => {
+  try {
+    const assignedTo = req.user?.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const skip = (page - 1) * limit;
+
+    const totalTasks = await Task.countDocuments({ assignedTo });
+
+    const tasks = await Task.find({ assignedTo })
+      .populate("assignedBy", "name email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      status: 200,
+      data: tasks,
+      pagination: {
+        total: totalTasks,
+        page,
+        limit,
+        totalPages: Math.ceil(totalTasks / limit),
+      },
+      message: "Tasks fetched successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
 const userContoller ={
     register,
     login,
     getUserProfile,
-    getAllUsers,
+    getAlLUsers,
     getSingleUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    getFilterUser,
+    getAllTasks,
+    getLatestTask
 };
 
 module.exports = userContoller;

@@ -1,58 +1,138 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: Employee Management System APIs
+  title: Employee Attendance & Task Management API
   version: 1.0.0
-  description: A comprehensive REST API for the Employee Management System
-  contact:
-    name: API Support
-    email: support@employee.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+  description: API for managing employees, attendance tracking, and task assignments.
 servers:
-  - url: http://localhost:5005
-    description: Development server
+  - url: https://yourdomain.com/api
+    description: Production server
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT Authorization header using the Bearer scheme
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: jwt
-      description: JWT token stored in cookie
+
   schemas:
+    Admin:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin]
+        permissions:
+          type: object
+        profileImageUrl:
+          type: string
+        isActive:
+          type: boolean
+        lastLogin:
+          type: string
+          format: date-time
+
     User:
       type: object
       properties:
-        id:
+        _id:
           type: string
-          example: 64abc123def456789012345
         name:
           type: string
-          example: Ahmed Ali
-        profileImageUrl:
+        email:
           type: string
-          example: https://example.com/profile.jpg
+        phone:
+          type: string
+        department:
+          type: string
+        designation:
+          type: string
         role:
           type: string
-          enum: [user, admin]
-          example: user
-        createdAt:
+          enum: [Employee, Manager, Hr]
+        location:
+          type: string
+        profileImageUrl:
+          type: string
+        status:
+          type: string
+          enum: [Active, Inactive]
+
+    Task:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+        assignedBy:
+          $ref: '#/components/schemas/Admin'
+        assignedTo:
+          $ref: '#/components/schemas/User'
+        status:
+          type: string
+          enum: [Pending, Progress, Complete, Overdue]
+        priority:
+          type: string
+          enum: [Low, Medium, High, Critical]
+        dueDate:
           type: string
           format: date-time
-security:
-  - bearerAuth: []
+        comments:
+          type: array
+          items:
+            type: object
+            properties:
+              user:
+                $ref: '#/components/schemas/User'
+              message:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+
+    Attendance:
+      type: object
+      properties:
+        _id:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        checkIn:
+          type: string
+          format: date-time
+        checkOut:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [Present, Absent, Leave]
+        location:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
 
 paths:
-  /api/admin/login:
+  /admin-auth/login:
     post:
       summary: Admin login
-      tags:
-        - Auth
+      tags: [AdminAuth]
       requestBody:
         required: true
         content:
@@ -62,12 +142,205 @@ paths:
               properties:
                 email:
                   type: string
-                  example: admin@example.com
                 password:
                   type: string
-                  example: yourpassword
       responses:
-        '200':
-          description: Successful login
-        '401':
-          description: Unauthorized
+        200:
+          description: Login successful
+
+  /admin/register:
+    post:
+      summary: Register new employee
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        201:
+          description: Employee created
+
+  /admin/post-task:
+    post:
+      summary: Assign a new task
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        201:
+          description: Task created
+
+  /admin/export-attendance-csv:
+    get:
+      summary: Export attendance report as CSV
+      tags: [Attendance]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [Present, Absent, Leave]
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: CSV report
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  /admin/get/all-task:
+    get:
+      summary: admin Get  all assigned tasks
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Task list returned
+
+  /admin/update-task/{id}:
+    patch:
+      summary: admin Update task status
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        200:
+          description: Task updated
+
+  /admin/delete-task:
+    get:
+      summary: admin Delete assigned tasks
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Task deleted
+
+  /admin/attendance-reports:
+    get:
+      summary: Get detailed attendance reports
+      tags: [Attendance]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Attendance report returned
+
+  /user/login:
+    post:
+      summary: User login
+      tags: [UserAuth]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: Login successful
+
+  /attendance/checkin:
+    post:
+      summary: Employee check-in
+      tags: [Attendance]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Checked in successfully
+
+  /attendance/checkout:
+    post:
+      summary: Employee check-out
+      tags: [Attendance]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Checked out successfully
+
+  /user/attendance-summary:
+    get:
+      summary: View daily/weekly/monthly attendance summary
+      tags: [Attendance]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Summary report returned
+
+  /user/get/all-task:
+    get:
+      summary: user Get individual all assigned tasks
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Task list returned
+
+  /user/update-task/{id}:
+    patch:
+      summary: users Update task status
+      tags: [Tasks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        200:
+          description: Task updated
