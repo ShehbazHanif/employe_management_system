@@ -29,7 +29,7 @@ router.delete('/delete-task/:id', authToken, isAdmin, taskController.deleteTask)
 router.patch('/update-task/:id', authToken, isAdmin, taskController.updateTask);
 router.get('/get-allTasks', authToken, isAdmin, taskController.getAllTasks);
 router.get('/get-filterdTasks', authToken, isAdmin, taskController.getFilterTask);
-router.get('get-singleTask', authToken, isAdmin, taskController.getSingleTask);
+router.get('/get-singleTask/:id', authToken, isAdmin, taskController.getSingleTask);
 
 //--------------------Admin Generate Attendance Reports and exportAttendanceCSV file-----------
 const attendanceController = require('../controllers/attendanceController')

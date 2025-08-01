@@ -16,7 +16,11 @@ router.post('/login',adminAuthLimiter ,userController.login);
 
 // route to get current user profile
 
-router.get('/profile',userController.getUserProfile);
+router.get('/profile', authToken,userController.getUserProfile);
+
+// route to update user Profile
+router.patch('/update-profile', authToken,userController.updateUserProfile);
+
 
 // route to get latest task
 router.get('/get/latest-task',authToken,userController.getLatestTask);
