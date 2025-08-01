@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   description: API for managing employees, attendance tracking, and task assignments.
 servers:
-  - url: https://yourdomain.com/api
-    description: Production server
+  - url: https://localhost:5005/api
+    description: developement  server
 
 components:
   securitySchemes:
