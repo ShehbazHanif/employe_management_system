@@ -33,14 +33,14 @@ const loginAdmin = catchAsync(async (req, res, next) => {
 
 // Get current admin profile
 const getAdminProfile = catchAsync(async (req, res, next) => {
-  const admin = await Admin.findById(req.user._id).select('-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil');
+  const admin = await Admin.findById(req.user.id).select('-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil');
   
   if (!admin) {
     return next(new AppError('Admin not found', 404));
   }
 
   res.status(200).json({
-    status: 'success',
+    status: 200,
     data: {
       admin
     }
@@ -51,7 +51,7 @@ const getAdminProfile = catchAsync(async (req, res, next) => {
 const updateAdminProfile = catchAsync(async (req, res, next) => {
   const { name, profileImageUrl } = req.body;
 
-  const admin = await Admin.findById(req.user._id);
+  const admin = await Admin.findById(req.user.id);
   if (!admin) {
     return next(new AppError('Admin not found', 404));
   }
@@ -96,13 +96,13 @@ const changePassword = catchAsync(async (req, res, next) => {
   }
 
   // Get admin with password
-  const admin = await Admin.findById(req.user._id).select('+password');
+  const admin = await Admin.findById(req.user.id).select('+password');
   if (!admin) {
     return next(new AppError('Admin not found', 404));
   }
 
   // Verify current password
-  const isValidPassword = await admin.comparePassword(currentPassword);
+  const isValidPassword = await bcrypt.compare(currentPassword,admin.password);
   if (!isValidPassword) {
     return next(new AppError('Current password is incorrect', 400));
   }

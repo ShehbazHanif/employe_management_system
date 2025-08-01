@@ -148,10 +148,140 @@ paths:
         200:
           description: Login successful
 
+  /admin-auth/register:
+    post:
+      summary: Register a new admin
+      tags: [AdminAuth]
+      description: Allows creation of a new admin account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: Admin User
+                email:
+                  type: string
+                  format: email
+                  example: admin@example.com
+                password:
+                  type: string
+                  format: password
+                  example: Admin@123
+      responses:
+        '201':
+          description: Admin created successfully
+        '400':
+          description: Bad request (e.g. duplicate email)
+        '429':
+          description: Too many requests (rate limited)
+
+  /admin-auth/profile:
+    get:
+      summary: Get admin profile
+      tags: [AdminAuth]
+      security:
+        - bearerAuth: []
+      description: Retrieves the profile of the currently logged-in admin.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      admin:
+                        $ref: '#/components/schemas/Admin'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /admin-auth/update-profile:
+    patch:
+      summary: Update admin profile
+      tags: [AdminAuth]
+      security:
+        - bearerAuth: []
+      description: Allows the logged-in admin to update their profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Admin Updated
+                email:
+                  type: string
+                  format: email
+                  example: newadmin@example.com
+                phone:
+                  type: string
+                  example: 03123456789
+      responses:
+        '200':
+          description: Profile updated successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Admin not found
+
+  /admin-auth/change-password:
+    patch:
+      summary: Change admin password
+      tags: [AdminAuth]
+      security:
+        - bearerAuth: []
+      description: Allows the admin to change their password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oldPassword
+                - newPassword
+              properties:
+                oldPassword:
+                  type: string
+                  format: password
+                  example: OldPass@123
+                newPassword:
+                  type: string
+                  format: password
+                  example: NewPass@456
+      responses:
+        '200':
+          description: Password changed successfully
+        '400':
+          description: Old password incorrect or validation failed
+        '401':
+          description: Unauthorized
+
   /admin/register:
     post:
       summary: Register new employee
-      tags: [Admin]
+      tags: [Admin Employee]
       security:
         - bearerAuth: []
       requestBody:
@@ -163,10 +293,77 @@ paths:
         201:
           description: Employee created
 
+  /admin/delete/{id}:
+    delete:
+      summary: Delete a user
+      tags: [Admin Employee]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: User deleted
+
+  /admin/get-allUsers:
+    get:
+      summary: Get all users
+      tags: [Admin Employee]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List of all users returned
+
+  /admin/get-filterdUser:
+    get:
+      summary: Get filtered users based on query
+      tags: [Admin Employee]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: department
+          schema:
+            type: string
+        - in: query
+          name: role
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [Active, Inactive]
+      responses:
+        200:
+          description: Filtered user list returned
+
+  /admin/get-singleUsers/{id}:
+    get:
+      summary: Get a single user by ID
+      tags: [Admin Employee]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: User details returned
+
+
   /admin/post-task:
     post:
       summary: Assign a new task
-      tags: [Tasks]
+      tags: [ Admin Task]
       security:
         - bearerAuth: []
       requestBody:
@@ -181,7 +378,7 @@ paths:
   /admin/export-attendance-csv:
     get:
       summary: Export attendance report as CSV
-      tags: [Attendance]
+      tags: [Admin Attendance]
       security:
         - bearerAuth: []
       parameters:
@@ -209,10 +406,10 @@ paths:
                 type: string
                 format: binary
 
-  /admin/get/all-task:
+  /admin/get-allTasks:
     get:
       summary: admin Get  all assigned tasks
-      tags: [Tasks]
+      tags: [Admin Task]
       security:
         - bearerAuth: []
       responses:
@@ -222,7 +419,7 @@ paths:
   /admin/update-task/{id}:
     patch:
       summary: admin Update task status
-      tags: [Tasks]
+      tags: [Admin Task]
       security:
         - bearerAuth: []
       parameters:
@@ -246,17 +443,85 @@ paths:
   /admin/delete-task:
     get:
       summary: admin Delete assigned tasks
-      tags: [Tasks]
+      tags: [Admin Task]
       security:
         - bearerAuth: []
       responses:
         200:
           description: Task deleted
 
+  /admin/get-filterdTasks:
+    get:
+      summary: Get filtered tasks
+      tags: [Admin Task]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: assignedTo
+          schema:
+            type: string
+          description: Filter tasks by assigned user ID
+        - in: query
+          name: priority
+          schema:
+            type: string
+            enum: [Low, Medium, High]
+          description: Filter tasks by priority
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [Pending, In Progress, Completed]
+          description: Filter tasks by status
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Filter tasks from this date
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Filter tasks to this date
+      responses:
+        200:
+          description: Filtered task list returned
+        401:
+          description: Unauthorized
+        500:
+          description: Server error
+
+  /admin/get-singleTask/{id}:
+    get:
+      summary: Get single task by ID
+      tags: [Admin Task]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Task ID
+      responses:
+        200:
+          description: Task data returned
+        404:
+          description: Task not found
+        401:
+          description: Unauthorized
+        500:
+          description: Server error
+
+
   /admin/attendance-reports:
     get:
       summary: Get detailed attendance reports
-      tags: [Attendance]
+      tags: [ Admin Attendance]
       security:
         - bearerAuth: []
       responses:
@@ -281,10 +546,97 @@ paths:
         200:
           description: Login successful
 
+  /user/profile:
+    get:
+      summary: Get logged-in user's profile
+      tags: [UserAuth]
+      description: Returns the profile of the currently authenticated user.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized - Invalid or missing token
+        '404':
+          description: User not found
+
+  /user/update-profile:
+    patch:
+      summary: Update logged-in user's profile
+      tags: [UserAuth]
+      description: Allows the logged-in user to update their profile information.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                phone:
+                  type: string
+                  example: 1234567890
+                department:
+                  type: string
+                  example: Engineering
+                designation:
+                  type: string
+                  example: Electric Engineer
+                location:
+                  type: string
+                  example: Islamabad
+                profileImageUrl:
+                  type: string
+                  example: https://example.com/profile.jpg
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
   /attendance/checkin:
     post:
       summary: Employee check-in
-      tags: [Attendance]
+      tags: [ User Attendance]
       security:
         - bearerAuth: []
       responses:
@@ -294,7 +646,7 @@ paths:
   /attendance/checkout:
     post:
       summary: Employee check-out
-      tags: [Attendance]
+      tags: [User Attendance]
       security:
         - bearerAuth: []
       responses:
@@ -304,7 +656,7 @@ paths:
   /user/attendance-summary:
     get:
       summary: User View  attendance Summary , working Hours , Break Time and OverTime (daily ,weekly, monthly)
-      tags: [Attendance]
+      tags: [User Attendance]
       security:
         - bearerAuth: []
       responses:
@@ -314,7 +666,7 @@ paths:
   /user/get/all-task:
     get:
       summary: user Get individual all assigned tasks
-      tags: [Tasks]
+      tags: [Employee Tasks]
       security:
         - bearerAuth: []
       responses:
@@ -324,7 +676,7 @@ paths:
   /user/update-task/{id}:
     patch:
       summary: users Update task status
-      tags: [Tasks]
+      tags: [ Employee Tasks]
       security:
         - bearerAuth: []
       parameters:
@@ -344,3 +696,20 @@ paths:
       responses:
         200:
           description: Task updated
+
+  /user/get/latest-task:
+    get:
+      summary: Get the latest task assigned to the employee
+      tags: [Employee Tasks]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Latest task returned successfully
+        401:
+          description: Unauthorized
+        404:
+          description: No task found
+        500:
+          description: Server error
+         

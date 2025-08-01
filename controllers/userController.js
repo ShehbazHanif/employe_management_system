@@ -57,7 +57,8 @@ const login = async(req,res)=> {
 
 // Get current user profile
 const getUserProfile = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user._id).select('-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil');
+  console.log("id",req.user?.id);
+  const user = await User.findById(req.user.id).select('-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil');
   
   if (!user) {
     return next(new AppError('user not found', 404));
@@ -67,6 +68,52 @@ const getUserProfile = catchAsync(async (req, res, next) => {
     status: 'success',
     data: {
       user
+    }
+  });
+});
+
+// update Profile
+const updateUserProfile = catchAsync(async (req, res, next) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  const {
+    name,
+    email,
+    phone,
+    department,
+    designation,
+    location,
+    profileImageUrl
+  } = req.body;
+
+  const updatedData = {
+    ...(name && { name }),
+    ...(email && { email }),
+    ...(phone && { phone }),
+    ...(department && { department }),
+    ...(designation && { designation }),
+    ...(location && { location }),
+    ...(profileImageUrl && { profileImageUrl })
+  };
+
+  const updatedUser = await User.findByIdAndUpdate(userId, updatedData, {
+    new: true,
+    runValidators: true,
+    select: '-password -passwordResetToken -passwordResetExpires -loginAttempts -lockUntil'
+  });
+
+  if (!updatedUser) {
+    return next(new AppError('User not found', 404));
+  }
+
+  res.status(200).json({
+    status: 200,
+    data: {
+      user: updatedUser
     }
   });
 });
@@ -117,10 +164,6 @@ const getFilterUser = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate('assignedBy', 'name email')
-      .populate('assignedTo', 'name email')
-      .populate('assignedTeam', 'name');
-
     res.status(200).json({
       status: 200,
       page,
@@ -150,7 +193,11 @@ const updateUser = async (req, res) => {
 // Delete User
 const  deleteUser = async (req, res) => {
   await User.findByIdAndDelete(req.params.id);
-  res.status(204).send();
+  res.status(200).json({
+    status:200,
+    data:[],
+    message:"user delete successfull"
+  })
 };
 
 //Get Latest Task
@@ -235,7 +282,8 @@ const userContoller ={
     deleteUser,
     getFilterUser,
     getAllTasks,
-    getLatestTask
+    getLatestTask,
+    updateUserProfile
 };
 
 module.exports = userContoller;

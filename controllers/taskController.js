@@ -50,8 +50,9 @@ const updateTask = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);
-    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
-    res.json({ success: true, message: 'Task deleted successfully' });
+    if (!task) return res.status(404).json({ status: 404, message: 'Task not found' });
+
+   return  res.status(200).json({ status: 200, message: 'Task deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -63,7 +64,6 @@ const getSingleTask = async (req, res) => {
     const task = await Task.findById(req.params.id)
       .populate('assignedBy', 'name email')
       .populate('assignedTo', 'name email')
-      .populate('assignedTeam', 'name')
       .populate('comments.user', 'name email');
 
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
@@ -123,7 +123,6 @@ const getFilterTask = async (req, res) => {
       .limit(limit)
       .populate('assignedBy', 'name email')
       .populate('assignedTo', 'name email')
-      .populate('assignedTeam', 'name');
 
     res.status(200).json({
       status: 200,
